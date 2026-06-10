@@ -63,6 +63,23 @@ Whitelisted API, usable from scripts: `merge_tool.api.get_merge_impact`,
 - Record names stored as plain text (saved filters, scripts) are not
   repointed — same limitation as frappe's own rename/merge.
 - Multi-column unique indexes are not pre-flight checked.
+- Fields the merging user cannot read (field-level / permlevel permissions)
+  and Password fields take no part in the merge: they are hidden from the
+  preview and audit snapshot, and the survivor keeps its own values.
+
+## Security notes
+
+- **Impact counts ignore per-doctype read permissions.** The pre-merge
+  impact report counts referencing documents across all doctypes so the
+  merge scope is truthful — a user who can read the two records being
+  merged can therefore learn *how many* (never *which*, nor any content)
+  documents of other doctypes link to them, even without read permission on
+  those doctypes. A real but minor disclosure; if that matters for your
+  permission model, restrict who can merge.
+- Merging repoints references on documents the merging user may not
+  otherwise be able to write (inherent to frappe's rename-merge, which this
+  app builds on). Treat **delete permission on the enabled doctypes** as
+  the gate for who may merge.
 
 ## Development
 

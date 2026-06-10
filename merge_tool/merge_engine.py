@@ -164,7 +164,13 @@ def get_merge_preview(doctype: str, source: str, target: str) -> dict:
 
 	fields = []
 	child_tables = []
+	allowed_permlevels = _allowed_read_permlevels(target_doc)
 	for df in frappe.get_meta(doctype).fields:
+		if df.permlevel not in allowed_permlevels:
+			# fields the user cannot read (field-level permissions) take no
+			# part in the merge: hidden from the preview, the survivor keeps
+			# its own values
+			continue
 		if df.fieldtype in table_fields:
 			child_tables.append(_child_table_preview(df, source_doc, target_doc))
 			continue
@@ -223,7 +229,7 @@ def merge_docs(doctype: str, source: str, target: str, resolutions: dict | None 
 	resolved_values = _resolved_field_values(preview, resolutions, source_doc, target_doc)
 	_check_unique_collisions(doctype, source, target, resolved_values, target_doc)
 
-	snapshot = json.dumps(source_doc.as_dict(convert_dates_to_str=True), indent=1, default=str, sort_keys=True)
+	snapshot = json.dumps(_snapshot_dict(source_doc), indent=1, default=str, sort_keys=True)
 
 	# free up unique values held by the source before the target adopts them
 	_release_source_unique_values(source_doc, resolved_values)
@@ -600,15 +606,48 @@ def _add_audit_comment(target_doc, source: str, snapshot: str) -> None:
 
 def _is_resolvable_field(df) -> bool:
 	"""True for fields a user can meaningfully resolve: persisted, writable,
-	not derived from elsewhere."""
+	not derived from elsewhere. Password fields are excluded — documents only
+	carry ``*****`` dummies (real values live in the encrypted store), so
+	there is nothing meaningful to show or resolve."""
 	return not (
 		df.fieldtype in no_value_fields
-		or df.fieldtype == "Read Only"
+		or df.fieldtype in ("Read Only", "Password")
 		or df.fieldname in IGNORED_FIELDS
 		or df.read_only
 		or df.is_virtual
 		or df.fetch_from
 	)
+
+
+def _allowed_read_permlevels(doc) -> set:
+	"""Permlevels the current user may read on this doctype. Administrator
+	sees everything, mirroring frappe's validate_higher_perm_levels."""
+	if frappe.session.user == "Administrator":
+		return {df.permlevel for df in doc.meta.fields} | {0}
+	return set(doc.get_permlevel_access("read"))
+
+
+def _snapshot_dict(doc) -> dict:
+	"""The source document as a dict for the audit snapshot, minus Password
+	fields and fields at permlevels the merging user cannot read — the
+	comment is visible to anyone who can read the survivor, so it must not
+	widen field-level read permissions."""
+	allowed = _allowed_read_permlevels(doc)
+	data = doc.as_dict(convert_dates_to_str=True)
+	for df in doc.meta.fields:
+		if df.fieldtype == "Password" or df.permlevel not in allowed:
+			data.pop(df.fieldname, None)
+		elif df.fieldtype in table_fields:
+			child_meta = frappe.get_meta(df.options)
+			hidden = [
+				cdf.fieldname
+				for cdf in child_meta.fields
+				if cdf.fieldtype == "Password" or cdf.permlevel not in allowed
+			]
+			for row in data.get(df.fieldname) or []:
+				for fieldname in hidden:
+					row.pop(fieldname, None)
+	return data
 
 
 def _is_empty(value) -> bool:

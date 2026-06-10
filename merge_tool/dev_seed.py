@@ -11,6 +11,11 @@ from frappe.utils import add_days, now_datetime, today
 
 
 def run():
+	if not frappe.conf.developer_mode:
+		frappe.throw(
+			"merge_tool.dev_seed creates and force-deletes test records; "
+			"it only runs on sites with developer_mode enabled."
+		)
 	_cleanup()
 	alice, alicia = _seed_contact_pair()
 	_seed_supplier_pair()

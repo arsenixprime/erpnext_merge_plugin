@@ -193,7 +193,34 @@ merge_tool.MergeDialog = class MergeDialog {
 		if (value === null || value === undefined || value === "") {
 			return `<span class="text-muted">${__("(empty)")}</span>`;
 		}
-		return frappe.format(value, { fieldtype: field.fieldtype, options: field.options });
+		// frappe.format does NOT HTML-escape every fieldtype (Data passes
+		// markup through; Text Editor renders raw HTML), so only use it for
+		// fieldtypes whose formatters emit numbers/dates, and escape
+		// everything else ourselves — record values are untrusted.
+		const NUMERIC_OR_DATE = [
+			"Currency",
+			"Float",
+			"Int",
+			"Percent",
+			"Check",
+			"Date",
+			"Datetime",
+			"Time",
+			"Duration",
+			"Rating",
+		];
+		if (NUMERIC_OR_DATE.includes(field.fieldtype)) {
+			return frappe.format(value, { fieldtype: field.fieldtype, options: field.options });
+		}
+		let text = String(value);
+		if (["Text Editor", "HTML Editor", "Markdown Editor", "Code"].includes(field.fieldtype)) {
+			// global from frappe/utils/common.js — regex-based, no DOM parsing
+			text = strip_html(text);
+		}
+		if (text.length > 500) {
+			text = text.slice(0, 500) + "…";
+		}
+		return frappe.utils.escape_html(text);
 	}
 
 	render_conflicts() {

@@ -298,6 +298,55 @@ class TestMergeEngineUniqueness(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("User", target.name, "username"), f"adoptme{s}")
 
 
+class TestMergeEngineFieldSecurity(FrappeTestCase):
+	def test_password_fields_excluded_from_preview(self):
+		s = _suffix()
+		enable_doctype("User")
+		u1 = make_user(f"merge-pw-a-{s}@example.com")
+		u2 = make_user(f"merge-pw-b-{s}@example.com")
+
+		preview = get_merge_preview("User", u1.name, u2.name)
+
+		fieldtypes = {f["fieldtype"] for f in preview["fields"]}
+		self.assertNotIn("Password", fieldtypes)
+		fieldnames = {f["fieldname"] for f in preview["fields"]}
+		self.assertNotIn("api_secret", fieldnames)
+
+	def test_permlevel_fields_hidden_from_restricted_users(self):
+		from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+
+		from merge_tool.merge_engine import _snapshot_dict
+
+		s = _suffix()
+		source = make_contact(f"PermLvlSrc{s}", designation="Restricted Value")
+		target = make_contact(f"PermLvlTgt{s}", designation="Other Value")
+		user = make_user(f"merge-permlvl-{s}@example.com", roles=["Sales User"])
+
+		make_property_setter("Contact", "designation", "permlevel", 1, "Int")
+		frappe.clear_cache(doctype="Contact")
+		try:
+			# Sales User grants read on Contact at permlevel 0 only, so this
+			# user must not see the permlevel-1 field
+			frappe.set_user(user.name)
+			preview = get_merge_preview("Contact", source.name, target.name)
+			self.assertNotIn("designation", {f["fieldname"] for f in preview["fields"]})
+
+			snapshot = _snapshot_dict(frappe.get_doc("Contact", source.name))
+			self.assertNotIn("designation", snapshot)
+			self.assertIn("first_name", snapshot)
+		finally:
+			frappe.set_user("Administrator")
+			frappe.db.delete(
+				"Property Setter",
+				{"doc_type": "Contact", "field_name": "designation", "property": "permlevel"},
+			)
+			frappe.clear_cache(doctype="Contact")
+
+		# Administrator (and the field back at permlevel 0) sees it again
+		preview = get_merge_preview("Contact", source.name, target.name)
+		self.assertIn("designation", {f["fieldname"] for f in preview["fields"]})
+
+
 class TestMergeEngineSuppliers(FrappeTestCase):
 	@classmethod
 	def setUpClass(cls):
@@ -381,8 +430,8 @@ class TestMergeEngineSuppliers(FrappeTestCase):
 # ---------------------------------------------------------------------------
 
 
-def make_user(email, username=None):
-	return frappe.get_doc(
+def make_user(email, username=None, roles=None):
+	user = frappe.get_doc(
 		{
 			"doctype": "User",
 			"email": email,
@@ -390,7 +439,12 @@ def make_user(email, username=None):
 			"username": username,
 			"send_welcome_email": 0,
 		}
-	).insert(ignore_permissions=True)
+	)
+	if roles:
+		user.user_type = "System User"
+		for role in roles:
+			user.append("roles", {"role": role})
+	return user.insert(ignore_permissions=True)
 
 
 def enable_doctype(doctype):
