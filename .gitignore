@@ -1,0 +1,14 @@
+*.pyc
+__pycache__/
+*.egg-info/
+.cache/
+node_modules/
+dist/
+build/
+merge_tool/public/dist/
+merge_tool/docs/current
+.vscode/
+.idea/
+*.swp
+.DS_Store
+tags
