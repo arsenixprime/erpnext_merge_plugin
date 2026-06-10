@@ -59,5 +59,28 @@ assets (image default node 24 is not v15-compatible).
 
 ## Core-code patches
 
-None so far. Any surgical patch/monkey-patch of frappe JS/Python must be
-documented here with exact location and reason, so upgrades can be checked.
+One JS prototype wrapper (no Python patches):
+
+- **`frappe.views.ListView.prototype.set_actions_menu_items`** is wrapped in
+  `merge_tool/public/js/list_view_merge.js`. The original method runs
+  unchanged; afterwards a "Merge" item is appended via the public
+  `page.add_actions_menu_item` API for doctypes in the merge registry,
+  enabled only when exactly two rows are checked. ReportView inherits the
+  method, covering report view too. Reason: v15 has no extension point for
+  doctype-generic bulk actions (`get_actions_menu_items` is a closed list;
+  `frappe.listview_settings` is per-doctype and collides with erpnext's own
+  settings). On framework upgrades, re-check
+  `frappe/public/js/frappe/list/list_view.js::set_actions_menu_items` (v15:
+  builds the menu once in `setup_page_head`).
+
+# Layout
+
+- `merge_tool/merge_engine.py` — engine (upstream candidate; see
+  docs/UPSTREAM_NOTES.md). `merge_tool/api.py` — whitelisted wrappers.
+- `merge_tool/merge_tool/doctype/merge_tool_settings/` (+ child doctype) —
+  the mergability registry, seeded by `merge_tool/install.py`.
+- `merge_tool/public/js/merge_dialog.js` — the merge dialog;
+  `list_view_merge.js` — list view action; bundled by
+  `merge_tool.bundle.js` via `app_include_js`.
+- Tests: `merge_tool/tests/test_merge_engine.py` (10 tests; suppliers class
+  creates Company/Item/Warehouse-Type fixtures for bare sites).

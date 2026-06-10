@@ -139,6 +139,14 @@ immediately through the bind mount.
    partial, broken one. If a run fails midway, `rm -rf` the bench dir (and drop
    the half-created site DB: `DROP DATABASE <hash>;` as mariadb root, password
    `123`) before retrying. Take a `mariadb-dump` first if in doubt.
+5. **The site skips the ERPNext setup wizard**, so wizard-created records are
+   missing: no Company, Fiscal Year, Warehouse Types, item/customer/supplier
+   group roots, UOMs, or default Address Template. Without a Fiscal Year
+   covering today, ERPNext party dashboards (e.g. opening any Supplier form)
+   throw `FiscalYearError: Date … is not in any active Fiscal Year`.
+   `bench --site dev.localhost execute merge_tool.dev_seed.run` creates
+   everything needed for the manual walkthrough, fiscal year included; the
+   test suite creates its own fixtures.
 
 ## Credentials (dev-only, throwaway)
 

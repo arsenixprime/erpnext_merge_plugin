@@ -1,33 +1,80 @@
-### Merge Tool
+# Merge Tool
 
-Interactive record merging for Frappe/ERPNext
+Interactive record merging for Frappe/ERPNext **v15**.
 
-### Installation
+Select two records in any list view, pick which one survives, resolve
+conflicting fields side by side, and merge — every reference (links, dynamic
+links, communications, comments, files, child tables) is repointed to the
+survivor and the duplicate is deleted, all in a single transaction that rolls
+back fully on any failure. Built for cleaning up CRM duplicates (Contacts,
+Suppliers, Customers, Addresses, Leads) but doctype-generic.
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+**Highlights**
+
+- **Merge** action in the list/report view Actions menu, active when exactly
+  two rows are selected.
+- Pre-merge **impact report**: how many documents link to each record.
+- **Conflict table**: pick the source or target value per field, or
+  concatenate text fields; identical/empty fields auto-resolve.
+- **Child tables**: union with key-based deduplication (default) or keep one
+  side; at most one `is_primary*` flag survives.
+- **Audit trail**: comment on the survivor with who/what/when and a JSON
+  snapshot of the deleted record, so merges are recoverable by hand.
+- Guardrails: draft documents only, write+delete permissions enforced,
+  unique-constraint collisions detected before anything is written.
+
+## Installation
+
+On a Frappe/ERPNext **version-15** bench:
 
 ```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app merge_tool
+bench get-app https://github.com/<owner>/merge_tool
+bench --site <your-site> install-app merge_tool
 ```
 
-### Contributing
+Installing enables merging for Contact, Supplier, Customer, Address and Lead
+(those present on the site). Manage the list in **Merge Tool Settings**.
 
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
+## Usage
+
+1. Open the list view of an enabled doctype and select **exactly two** rows.
+2. **Actions → Merge.**
+3. Choose the survivor, resolve any conflicting fields, review the child
+   table previews, and confirm.
+
+The merge cannot be undone from the UI — the confirmation step tells you
+exactly what will be repointed and deleted before you commit.
+
+## Extending from other apps
+
+```python
+# hooks.py
+mergable_doctypes = ["My DocType"]            # enable doctypes programmatically
+on_doc_merged = ["my_app.utils.after_merge"]  # fn(doctype, source_name, target_doc),
+                                              # runs inside the merge transaction
+```
+
+Whitelisted API, usable from scripts: `merge_tool.api.get_merge_impact`,
+`get_merge_preview`, `merge_docs(doctype, source, target, resolutions)`.
+
+## Known limitations
+
+- Submitted/submittable documents cannot be merged (v1 scope).
+- Record names stored as plain text (saved filters, scripts) are not
+  repointed — same limitation as frappe's own rename/merge.
+- Multi-column unique indexes are not pre-flight checked.
+
+## Development
+
+`docs/DEV_SETUP.md` — dockerized v15 dev bench. `docs/MANUAL_TESTING.md` —
+browser walkthrough. `docs/UPSTREAM_NOTES.md` — plan for upstreaming the
+engine to frappe core.
 
 ```bash
-cd apps/merge_tool
-pre-commit install
+bench --site <site> set-config allow_tests true
+bench --site <site> run-tests --app merge_tool
 ```
 
-Pre-commit is configured to use the following tools for checking and formatting your code:
+## License
 
-- ruff
-- eslint
-- prettier
-- pyupgrade
-
-### License
-
-mit
+GPL-3.0. See `license.txt`.
