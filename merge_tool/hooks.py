@@ -3,7 +3,7 @@ app_title = "Merge Tool"
 app_publisher = "GreenSight Agronomics"
 app_description = "Interactive record merging for Frappe/ERPNext"
 app_email = "james@greensightag.com"
-app_license = "mit"
+app_license = "gpl-3.0"
 
 # Apps
 # ------------------
@@ -26,7 +26,7 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/merge_tool/css/merge_tool.css"
-# app_include_js = "/assets/merge_tool/js/merge_tool.js"
+app_include_js = "merge_tool.bundle.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/merge_tool/css/merge_tool.css"
@@ -83,7 +83,7 @@ app_license = "mit"
 # ------------
 
 # before_install = "merge_tool.install.before_install"
-# after_install = "merge_tool.install.after_install"
+after_install = "merge_tool.install.after_install"
 
 # Uninstallation
 # ------------
