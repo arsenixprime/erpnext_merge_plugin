@@ -353,6 +353,7 @@ class TestMergeEngineSuppliers(FrappeTestCase):
 		super().setUpClass()
 		cls.company = get_or_make_company()
 		cls.item = get_or_make_item()
+		ensure_fiscal_year()
 
 	def test_supplier_merge_repoints_po_and_dedupes_shared_address(self):
 		s = _suffix()
@@ -490,6 +491,25 @@ def get_or_make_company():
 		.insert()
 		.name
 	)
+
+
+def ensure_fiscal_year():
+	"""Purchase Order validates its date against an active Fiscal Year; bare
+	sites (setup wizard not run) have none."""
+	if frappe.db.exists(
+		"Fiscal Year",
+		{"year_start_date": ("<=", today()), "year_end_date": (">=", today()), "disabled": 0},
+	):
+		return
+	year = today()[:4]
+	frappe.get_doc(
+		{
+			"doctype": "Fiscal Year",
+			"year": year,
+			"year_start_date": f"{year}-01-01",
+			"year_end_date": f"{year}-12-31",
+		}
+	).insert()
 
 
 def get_or_make_item():

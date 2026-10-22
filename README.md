@@ -23,12 +23,22 @@ Suppliers, Customers, Addresses, Leads) but doctype-generic.
 - Guardrails: draft documents only, write+delete permissions enforced,
   unique-constraint collisions detected before anything is written.
 
+## Branches
+
+Following the frappe/erpnext convention, each supported major version has a
+`version-NN` branch; `develop` is the integration branch for the newest one.
+
+| Frappe/ERPNext | Branch | Status |
+|---|---|---|
+| v15 | `version-15` | Supported (original target) |
+| v16 | `version-16` | **Not yet tested by humans.** Automated tests pass and the walkthrough was run by a scripted headless browser only |
+
 ## Installation
 
 On a Frappe/ERPNext **version-15** bench:
 
 ```bash
-bench get-app https://github.com/<owner>/merge_tool
+bench get-app --branch version-15 https://github.com/<owner>/merge_tool
 bench --site <your-site> install-app merge_tool
 ```
 

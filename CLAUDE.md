@@ -50,7 +50,12 @@ assets (image default node 24 is not v15-compatible).
 
 ## Git rules (strict)
 
-- Day-to-day work on `develop`; user decides when to cut `main`.
+- Branches follow the frappe convention: `version-15`, `version-16` are the
+  per-major release branches; `develop` is the integration branch for the
+  newest major (currently v16) and `version-16` is cut from it. Fixes that
+  apply to v15 are cherry-picked onto `version-15`. Each branch pins its
+  frappe range in `pyproject.toml` `[tool.bench.frappe-dependencies]`.
+- Day-to-day work on `develop`; user decides when to update release branches.
 - Conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - **Never commit or push without explicit user approval** — present diff
   summary + proposed message first. No force-push, no history rewrites, no
@@ -82,5 +87,5 @@ One JS prototype wrapper (no Python patches):
 - `merge_tool/public/js/merge_dialog.js` — the merge dialog;
   `list_view_merge.js` — list view action; bundled by
   `merge_tool.bundle.js` via `app_include_js`.
-- Tests: `merge_tool/tests/test_merge_engine.py` (10 tests; suppliers class
+- Tests: `merge_tool/tests/test_merge_engine.py` (13 tests; suppliers class
   creates Company/Item/Warehouse-Type fixtures for bare sites).
