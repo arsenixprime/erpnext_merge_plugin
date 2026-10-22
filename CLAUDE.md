@@ -1,6 +1,8 @@
 # merge_tool — project conventions
 
-Custom Frappe app adding interactive record merging to Frappe/ERPNext **v15**.
+Custom Frappe app adding interactive record merging to Frappe/ERPNext **v16**
+(this branch; v15 lives on `version-15`). **v16 has not yet been tested by
+humans** — only automated tests and a scripted headless-browser walkthrough.
 Standalone app, no core patches. The server-side merge engine is written to
 frappe-core standards because it is intended for a future upstream PR to
 `frappe/frappe`.
@@ -23,7 +25,7 @@ frappe-core standards because it is intended for a future upstream PR to
   allow rename; pre-flight unique-constraint check.
 - Keep `merge_engine.py` (engine) cleanly separated from `api.py`
   (whitelisted endpoints) and from any UI glue.
-- **Verify frappe internals against the v15 source in the bench**
+- **Verify frappe internals against the v16 source in the bench**
   (`apps/frappe/...`), not from memory.
 
 ## Environment
@@ -45,12 +47,19 @@ bench --site dev.localhost console
 bench --site dev.localhost migrate
 ```
 
-Inside the container, run `nvm use v20.20.2` before anything that builds JS
-assets (image default node 24 is not v15-compatible).
+This branch targets the **v16 bench** (`docs/DEV_SETUP.md` "v16 bench"):
+container `mtv16-frappe-1`, site on <http://dev.localhost:8016>, Python 3.14 /
+Node 24 image defaults, no nvm needed. The v15 bench (`devcontainer-frappe-1`,
+Node 20 via `nvm use v20.20.2`) is for the `version-15` branch only.
 
 ## Git rules (strict)
 
-- Day-to-day work on `develop`; user decides when to cut `main`.
+- Branches follow the frappe convention: `version-15`, `version-16` are the
+  per-major release branches; `develop` is the integration branch for the
+  newest major (currently v16) and `version-16` is cut from it. Fixes that
+  apply to v15 are cherry-picked onto `version-15`. Each branch pins its
+  frappe range in `pyproject.toml` `[tool.bench.frappe-dependencies]`.
+- Day-to-day work on `develop`; user decides when to update release branches.
 - Conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - **Never commit or push without explicit user approval** — present diff
   summary + proposed message first. No force-push, no history rewrites, no
@@ -70,8 +79,8 @@ One JS prototype wrapper (no Python patches):
   doctype-generic bulk actions (`get_actions_menu_items` is a closed list;
   `frappe.listview_settings` is per-doctype and collides with erpnext's own
   settings). On framework upgrades, re-check
-  `frappe/public/js/frappe/list/list_view.js::set_actions_menu_items` (v15:
-  builds the menu once in `setup_page_head`).
+  `frappe/public/js/frappe/list/list_view.js::set_actions_menu_items` (v15 and
+  v16: builds the menu once in `setup_page_head`).
 
 # Layout
 
@@ -82,5 +91,5 @@ One JS prototype wrapper (no Python patches):
 - `merge_tool/public/js/merge_dialog.js` — the merge dialog;
   `list_view_merge.js` — list view action; bundled by
   `merge_tool.bundle.js` via `app_include_js`.
-- Tests: `merge_tool/tests/test_merge_engine.py` (10 tests; suppliers class
+- Tests: `merge_tool/tests/test_merge_engine.py` (13 tests, `IntegrationTestCase`; suppliers class
   creates Company/Item/Warehouse-Type fixtures for bare sites).

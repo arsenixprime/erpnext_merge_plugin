@@ -2,7 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, today
 
 from merge_tool.merge_engine import get_merge_impact, get_merge_preview, merge_docs
@@ -30,7 +30,7 @@ def make_contact(first_name, emails=(), phones=(), links=(), **kwargs):
 	return contact.insert()
 
 
-class TestMergeEngineContacts(FrappeTestCase):
+class TestMergeEngineContacts(IntegrationTestCase):
 	def test_contact_merge_unions_children_and_repoints(self):
 		s = _suffix()
 		user_a = make_user(f"merge-link-a-{s}@example.com")
@@ -242,7 +242,7 @@ class TestMergeEngineContacts(FrappeTestCase):
 			frappe.set_user("Administrator")
 
 
-class TestMergeEngineUniqueness(FrappeTestCase):
+class TestMergeEngineUniqueness(IntegrationTestCase):
 	def test_unique_collision_fails_cleanly(self):
 		# User.username and User.email are unique fields; a concat resolution
 		# can manufacture a value that collides with a third user.
@@ -298,7 +298,7 @@ class TestMergeEngineUniqueness(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("User", target.name, "username"), f"adoptme{s}")
 
 
-class TestMergeEngineFieldSecurity(FrappeTestCase):
+class TestMergeEngineFieldSecurity(IntegrationTestCase):
 	def test_password_fields_excluded_from_preview(self):
 		s = _suffix()
 		enable_doctype("User")
@@ -347,12 +347,13 @@ class TestMergeEngineFieldSecurity(FrappeTestCase):
 		self.assertIn("designation", {f["fieldname"] for f in preview["fields"]})
 
 
-class TestMergeEngineSuppliers(FrappeTestCase):
+class TestMergeEngineSuppliers(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
 		cls.company = get_or_make_company()
 		cls.item = get_or_make_item()
+		ensure_fiscal_year()
 
 	def test_supplier_merge_repoints_po_and_dedupes_shared_address(self):
 		s = _suffix()
@@ -490,6 +491,25 @@ def get_or_make_company():
 		.insert()
 		.name
 	)
+
+
+def ensure_fiscal_year():
+	"""Purchase Order validates its date against an active Fiscal Year; bare
+	sites (setup wizard not run) have none."""
+	if frappe.db.exists(
+		"Fiscal Year",
+		{"year_start_date": ("<=", today()), "year_end_date": (">=", today()), "disabled": 0},
+	):
+		return
+	year = today()[:4]
+	frappe.get_doc(
+		{
+			"doctype": "Fiscal Year",
+			"year": year,
+			"year_start_date": f"{year}-01-01",
+			"year_end_date": f"{year}-12-31",
+		}
+	).insert()
 
 
 def get_or_make_item():

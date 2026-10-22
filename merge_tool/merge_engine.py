@@ -29,6 +29,7 @@ from frappe import _
 from frappe.model import child_table_fields, default_fields, no_value_fields, optional_fields, table_fields
 from frappe.model.dynamic_links import get_dynamic_link_map
 from frappe.model.rename_doc import get_link_fields, rename_doc
+from frappe.query_builder.functions import Count
 from frappe.utils import cstr, now
 
 # Fields that never take part in conflict resolution.
@@ -114,14 +115,17 @@ def _count_references(counts, parent_doctype, fieldname, name, issingle=False, e
 		filters.update(extra_filters)
 
 	if meta.istable:
-		# count distinct parent documents, grouped by their doctype
-		rows = frappe.get_all(
-			parent_doctype,
-			filters=filters,
-			fields=["parenttype", "count(distinct parent) as docs"],
-			group_by="parenttype",
-			ignore_permissions=True,
+		# count distinct parent documents, grouped by their doctype (query
+		# builder, since v16 get_all rejects SQL functions given as strings)
+		table = frappe.qb.DocType(parent_doctype)
+		query = (
+			frappe.qb.from_(table)
+			.select(table.parenttype, Count(table.parent).distinct().as_("docs"))
+			.groupby(table.parenttype)
 		)
+		for field, value in filters.items():
+			query = query.where(table[field] == value)
+		rows = query.run(as_dict=True)
 		merge_doctype, source, target = self_pair
 		for row in rows:
 			if not row.parenttype:
@@ -528,7 +532,7 @@ def _reconcile_primary_flags(target_doc, fieldname: str, appended_rows: list) ->
 
 
 def _normalize_assign(doctype: str, *names: str) -> None:
-	"""Work around a frappe v15 inconsistency: ToDo.update_in_reference
+	"""Work around a frappe v15/v16 inconsistency: ToDo.update_in_reference
 	writes ``_assign = ""`` (empty string, not NULL) on the referenced
 	document when no open assigned ToDos remain, and rename_doc's
 	update_assignments crashes on it (``frappe.parse_json("")``). Normalize

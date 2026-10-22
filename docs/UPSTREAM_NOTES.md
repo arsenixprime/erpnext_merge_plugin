@@ -65,3 +65,23 @@ Plan for proposing the merge engine to `frappe/frappe` (develop branch).
   (`_normalize_assign`); a core PR should fix either writer or reader
   (likely both: write `null`, and make `update_assignments` tolerate
   empty strings).
+
+## v16 differences (checked against frappe `version-16`, 16.53.0)
+
+- `frappe.get_all` / `get_list` now go through the query builder and reject
+  SQL functions given as strings in `fields` (`"count(distinct parent) as
+  docs"` throws). The impact counter builds that query with `frappe.qb`
+  instead, which works on v15 and v16 alike.
+- `rename_doc` no longer repoints Energy Point Logs (energy points left
+  core), casts autoincrement names to int, and publishes a `doc_rename`
+  realtime event to open forms of the old name. Nothing the engine
+  depends on changed.
+- The `_assign = ""` bug above is still present in v16
+  (`ToDo.update_in_reference` and `update_assignments` are unchanged), so
+  `_normalize_assign` stays.
+- `ListView.set_actions_menu_items` and `page.add_actions_menu_item` are
+  unchanged from v15; Bootstrap is still 4.6.2, so the dropdown
+  `show.bs.dropdown` hook in `list_view_merge.js` still applies.
+- Tests use `frappe.tests.IntegrationTestCase`; `FrappeTestCase` is a
+  deprecated compat shim in v16, and `IntegrationTestCase` does not exist
+  in v15, so the test base class differs between the two branches.

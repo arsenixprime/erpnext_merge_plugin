@@ -1,6 +1,6 @@
 # Merge Tool
 
-Interactive record merging for Frappe/ERPNext **v15**.
+Interactive record merging for Frappe/ERPNext **v16** (v15: see the `version-15` branch).
 
 Select two records in any list view, pick which one survives, resolve
 conflicting fields side by side, and merge — every reference (links, dynamic
@@ -23,12 +23,22 @@ Suppliers, Customers, Addresses, Leads) but doctype-generic.
 - Guardrails: draft documents only, write+delete permissions enforced,
   unique-constraint collisions detected before anything is written.
 
+## Branches
+
+Following the frappe/erpnext convention, each supported major version has a
+`version-NN` branch; `develop` is the integration branch for the newest one.
+
+| Frappe/ERPNext | Branch | Status |
+|---|---|---|
+| v15 | `version-15` | Supported (original target) |
+| v16 | `version-16` | **Not yet tested by humans.** Automated tests pass and the walkthrough was run by a scripted headless browser only |
+
 ## Installation
 
-On a Frappe/ERPNext **version-15** bench:
+On a Frappe/ERPNext **version-16** bench:
 
 ```bash
-bench get-app https://github.com/<owner>/merge_tool
+bench get-app --branch version-16 https://github.com/<owner>/merge_tool
 bench --site <your-site> install-app merge_tool
 ```
 
@@ -83,7 +93,7 @@ Whitelisted API, usable from scripts: `merge_tool.api.get_merge_impact`,
 
 ## Development
 
-`docs/DEV_SETUP.md` — dockerized v15 dev bench. `docs/MANUAL_TESTING.md` —
+`docs/DEV_SETUP.md` — dockerized dev bench (written for v15; v16 needs Python 3.14 / Node 24). `docs/MANUAL_TESTING.md` —
 browser walkthrough. `docs/UPSTREAM_NOTES.md` — plan for upstreaming the
 engine to frappe core.
 

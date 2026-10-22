@@ -5,12 +5,12 @@
 // doctypes enabled in Merge Tool Settings. Enabled only when exactly two
 // rows are selected.
 //
-// PATCH NOTE: frappe v15 has no extension point for adding bulk actions
+// PATCH NOTE: frappe v15/v16 have no extension point for adding bulk actions
 // across doctypes, so this wraps ListView.prototype.set_actions_menu_items:
 // the original runs unchanged, then the Merge item is appended through the
 // public page.add_actions_menu_item API. ReportView inherits the same
 // method, so both views are covered. Checked against
-// frappe/public/js/frappe/list/list_view.js (v15); re-verify on framework
+// frappe/public/js/frappe/list/list_view.js (v15 and v16); re-verify on framework
 // upgrades. See CLAUDE.md.
 
 frappe.provide("merge_tool");
@@ -52,16 +52,22 @@ $(function () {
 			if (!$item) return;
 			$item.addClass("merge-tool-action");
 
-			// enable the item only while exactly two rows are checked
-			const $dropdown = $item.closest(".dropdown");
-			$dropdown.on("show.bs.dropdown", () => {
+			// enable the item only while exactly two rows are checked. The
+			// state is refreshed in the capture phase on the button group, so
+			// it runs before whichever dropdown opens the menu (v15: bootstrap;
+			// v16: frappe.ui.Dropdown, which copies the item's "disabled" class
+			// when it opens and fires no bootstrap events).
+			const refresh = () => {
 				const can_merge = this.get_checked_items(true).length === 2;
 				$item.toggleClass("disabled", !can_merge);
 				$item.attr(
 					"title",
 					can_merge ? "" : __("Select exactly two records to merge")
 				);
-			});
+			};
+			const group = this.page.actions_btn_group.get(0);
+			group.addEventListener("click", refresh, true);
+			group.addEventListener("keydown", refresh, true);
 		});
 	};
 });

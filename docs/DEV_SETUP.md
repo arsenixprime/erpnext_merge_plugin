@@ -1,8 +1,10 @@
 # Development Environment Setup
 
-Reproducible bring-up of the Frappe/ERPNext **v15** dev environment used to
+Reproducible bring-up of the Frappe/ERPNext dev environments used to
 develop `merge_tool`, based on the official `frappe_docker` development
-workflow (docker-compose, no VSCode devcontainer required).
+workflow (docker-compose, no VSCode devcontainer required). The main
+sections below describe the **v15** bench (`version-15` branch); see
+"v16 bench" for `develop` / `version-16`.
 
 ## Layout on the host
 
@@ -96,7 +98,75 @@ Open <http://dev.localhost:8000> — log in as `Administrator` / `admin`.
 (`*.localhost` resolves to 127.0.0.1 on most systems; add an `/etc/hosts`
 entry if it doesn't.)
 
-## Daily driving
+## v16 bench (develop / version-16)
+
+A second, independent bench for v16, verified on this host. The
+`frappe/bench` image defaults (Python 3.14.2, Node 24.13.0, yarn) are exactly
+what v16 needs, so no nvm/pyenv prep is required, and MariaDB 11.8 from the
+stock compose file is supported. A separate compose project (`-p mtv16`)
+keeps its containers and volumes apart from the v15 set.
+
+```bash
+# in a fresh clone of frappe_docker
+cp -R devcontainer-example .devcontainer
+cp -R development/vscode-example development/.vscode
+```
+
+Edit `.devcontainer/docker-compose.yml`, `frappe` service:
+
+```yaml
+    dns: [1.1.1.1, 8.8.8.8]          # quirk 1
+    ports:
+      - 127.0.0.1:8016:8000          # site at http://dev.localhost:8016
+      - 127.0.0.1:9016:9000
+```
+
+```bash
+cat > development/apps-v16.json <<'JSON'
+[{"url": "https://github.com/frappe/erpnext.git", "branch": "version-16"}]
+JSON
+
+docker compose -p mtv16 -f .devcontainer/docker-compose.yml up -d
+docker exec -w /workspace/development mtv16-frappe-1 \
+  bash -ic "python installer.py -j apps-v16.json -t version-16 -p 3.14.2 -n v24.13.0 -s dev.localhost"
+```
+
+Then mount the app repo into the bench instead of cloning it, so tests run
+against the working tree. Only after the installer has finished (quirk 4),
+add to the `frappe` service's volumes and recreate it:
+
+```yaml
+      - /path/to/erpnext_merge_plugin:/workspace/development/frappe-bench/apps/merge_tool
+```
+
+```bash
+docker compose -p mtv16 -f .devcontainer/docker-compose.yml up -d frappe
+docker exec -w /workspace/development/frappe-bench mtv16-frappe-1 bash -ic '
+  uv pip install --python env/bin/python -e apps/merge_tool &&
+  printf "frappe\nerpnext\nmerge_tool\n" > sites/apps.txt &&
+  bench build --app merge_tool &&
+  bench --site dev.localhost install-app merge_tool &&
+  bench --site dev.localhost set-config allow_tests true &&
+  bench --site dev.localhost run-tests --app merge_tool'
+```
+
+Check out the repo on `develop`/`version-16` while using this bench.
+
+For browser use, the v16 desk redirects every page to the setup wizard
+until setup is marked complete (quirk 5 still applies: seed with
+`merge_tool.dev_seed.run` instead of running the wizard):
+
+```bash
+docker exec -w /workspace/development/frappe-bench mtv16-frappe-1 bash -ic \
+  "echo 'frappe.db.set_value(\"Installed Application\", {\"app_name\": (\"in\", [\"frappe\", \"erpnext\"])}, \"is_setup_complete\", 1); frappe.db.commit()' \
+   | bench --site dev.localhost console"
+docker exec -d -w /workspace/development/frappe-bench mtv16-frappe-1 bash -ic \
+  "bench start > /tmp/bench-start.log 2>&1"
+```
+
+Realtime (socket.io) is not reachable from the host with these port mappings
+(the client connects to port 9000); the merge UI does not use it.
+
 
 ```bash
 # Shell inside the dev container

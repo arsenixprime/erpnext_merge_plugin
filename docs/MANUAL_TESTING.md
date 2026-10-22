@@ -1,7 +1,13 @@
 # Manual Testing Walkthrough
 
 Browser test script for the merge UI. Assumes the dev environment from
-`DEV_SETUP.md`: <http://dev.localhost:8000>, Administrator / `admin`.
+`DEV_SETUP.md`: <http://dev.localhost:8000>, Administrator / `admin`
+(v16 bench: <http://dev.localhost:8016>).
+
+> **v16 status:** this walkthrough has **not yet been run by a human on
+> v16.** Sections 2–5 were run on v16 by a scripted headless browser
+> (Playwright) only; sections 6–7 and the comment carry-over check in
+> section 4 have not been run on v16 at all.
 
 ## 1. Setup test data (2 minutes)
 
@@ -16,7 +22,8 @@ Browser test script for the merge UI. Assumes the dev environment from
 ## 2. Action visibility
 
 - [ ] In **Contact List**, select **one** row → Actions menu: **Merge** is
-      greyed out with tooltip "Select exactly two records to merge".
+      greyed out (v15 also shows the tooltip "Select exactly two records to
+      merge"; v16's menu does not render item tooltips).
 - [ ] Select **two** rows → **Merge** is active.
 - [ ] Select **three** rows → greyed out again.
 - [ ] In **ToDo List** (not an enabled doctype), select two rows → no Merge
